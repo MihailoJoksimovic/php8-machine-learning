@@ -1,28 +1,68 @@
 <?php
 
-class Dataset implements ArrayAccess
+class Dataset implements ArrayAccess, Countable
 {
     private array $columns;
+
+    /**
+     * Columns that are numerical. This is used for all operations that require
+     * calculations.
+     *
+     * @var array
+     */
+    private array $numericalColumns;
+
     private array $indexes;
 
     private array $data;
 
-    public function __construct($data)
+    private ?string $idColumn;
+
+    public function __construct($data, $idColumn = null)
     {
         $columns = $data[0];
 
         $i = 0;
 
+        $idColumnFound = false;
+
+        $this->columns = [];
+
         foreach ($columns as $column) {
             $this->columns[$column] = $i;
+
+            if ($idColumn && $column == $idColumn) {
+                $idColumnFound = true;
+            }
 
             $i++;
         }
 
+        if ($idColumn && !$idColumnFound) {
+            throw new \InvalidArgumentException("ID Column '$idColumn' not found in column list!");
+        }
+
+        $this->idColumn = $idColumn;
+
         // Remove first row which is usually column names
         unset($data[0]);
 
-        $this->data = array_values($data);
+        if (!$idColumn) {
+            $this->data = array_values($data);
+        } else {
+            $idColumnIndex = $this->columns[$idColumn];
+
+            $this->data = [];
+
+            foreach ($data as $row) {
+                $rowId = $row[$idColumnIndex];
+
+                unset($row[$idColumnIndex]);
+
+                $this->data[$rowId] = $row;
+            }
+        }
+
     }
 
     public function offsetExists($offset)
@@ -66,9 +106,35 @@ class Dataset implements ArrayAccess
         throw new Exception(__METHOD__ . ' not implemented');
     }
 
+    public function count()
+    {
+        return count($this->data);
+    }
+
     public function columns()
     {
         return array_flip($this->columns);
+    }
+
+    public function dropColumn(string $columnName)
+    {
+        $columnIndex = $this->columns[$columnName];
+
+        $newColumns = $this->columns;
+
+        unset($newColumns[$columnName]);
+
+        $newData = [];
+
+        foreach ($this->data as $row) {
+            unset($row[$columnIndex]);
+
+            $newData[] = $row;
+        }
+
+        array_unshift($newData, $newColumns);
+
+        return new Dataset($newData);
     }
 
     public function range($from = 0, $to = null)
@@ -155,6 +221,13 @@ class Dataset implements ArrayAccess
         $vectorBSum = 0;
 
         for ($i = 0; $i < count($vectorA); $i++) {
+            if (!is_numeric($vectorA[$i]) || !is_numeric($vectorB[$i])) {
+                // Skip non-numerical columns. Ideally to be replaced with EXPLICIT way of saying
+                // which columns are numeric!
+
+                continue;
+            }
+
             $product += $vectorA[$i] * $vectorB[$i];
             $vectorASum += pow($vectorA[$i], 2);
             $vectorBSum += pow($vectorB[$i], 2);
@@ -173,4 +246,76 @@ class Dataset implements ArrayAccess
         return $this->_cosineSimilarity($vectorA, $vectorB);
     }
 
+    /**
+     * Returns n x n matrix with cosine similarity coefficients between
+     * each row
+     */
+    public function cosineSimilarityOfFullMatrix()
+    {
+        $out = [];
+
+        $numEntries = count($this->data);
+
+        echo "Num entries in matrix: $numEntries " . PHP_EOL;
+
+        $indexes = array_keys($this->data);
+
+        foreach ($indexes as $indexA) {
+            echo "Calculating similarities for Index: $indexA " . PHP_EOL;
+
+            $similarities = [];
+
+            foreach ($indexes as $indexB) {
+                $similarities[] = $this->cosineSimilarityByNumericalIndex($indexA, $indexB);
+            }
+
+            $out[] = $similarities;
+        }
+
+//        for ($i = 0; $i < $numEntries; $i++) {
+//            $similarities = [];
+//
+//            if ($i % 1000 === 0) {
+//                echo "\tProcessing row #$i / $numEntries" . PHP_EOL;
+//            }
+//
+//            for ($j = 0; $j < $numEntries; $j++) {
+//                $similarities[] = $this->cosineSimilarityByNumericalIndex($i, $j);
+//            }
+//
+//            $out[] = $similarities;
+//        }
+
+//        // Make array entry for each row
+//
+//        foreach ($this->data as $indexA => $rowA) {
+//
+//
+//            foreach ($this->data as $indexB => $rowB) {
+//
+//            }
+//
+//            $out[] = $similarities;
+//        }
+
+        return $out;
+    }
+
+    public function head(int $n)
+    {
+        $columns = $this->columns;
+
+        $data = [];
+
+        $data = array_slice($this->data, 0, $n);
+
+        array_unshift($data, $columns);
+
+        return new Dataset($data);
+    }
+
+    public function fillna(int|float $value): void
+    {
+        throw new \Exception(__METHOD__ . " not implemented");
+    }
 }

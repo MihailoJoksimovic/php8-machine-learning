@@ -4,24 +4,40 @@ var_dump('Mem usage: ' . memory_get_usage() / 1024 / 1024 . " MB");
 
 require_once './Dataset.php';
 require_once './Formatter.php';
+require_once './KNN.php';
 
 ini_set('memory_limit', '1G');
 
 $formatter = new Formatter();
 
-$movies = array_map('str_getcsv', file('./movies.csv'));
-$ratings = array_map('str_getcsv', file('./ratings.csv'));
+//$movies = array_map('str_getcsv', file('./movies.csv'));
+//$ratings = array_map('str_getcsv', file('./ratings.csv'));
 
-$movies = new Dataset($movies);
-$ratings = new Dataset($ratings);
+//$movies = new Dataset($movies);
+//$ratings = new Dataset($ratings);
 
-$mixaTest = new Dataset([
-   ['d1', 'd2', 'd3'],
-   [33, 33, 33],
-   [33, 11, 19]
-]);
+//$mixaTest = new Dataset([
+//   ['d1', 'd2', 'd3'],
+//   [33, 33, 33],
+//   [33, 11, 19]
+//]);
 
-var_dump($mixaTest->cosineSimilarityByNumericalIndex(0, 1)); die();
+$iris = array_map('str_getcsv', file('./Iris.csv'));
+
+$iris = (new Dataset($iris, "Id"));
+
+//$knn = new KNN($iris);die();
+
+$similarities = $iris->cosineSimilarityOfFullMatrix();die();
+
+//var_dump($iris->cosineSimilarityOfFullMatrix());die();
+
+//var_dump($iris->columns()); die();
+var_dump($iris->cosineSimilarityOfFullMatrix()); die();
+
+//var_dump($mixaTest->cosineSimilarityOfFullMatrix()); die();
+
+//var_dump($mixaTest->cosineSimilarityByNumericalIndex(0, 1)); die();
 
 //var_dump($movies->columns());
 
@@ -35,6 +51,12 @@ var_dump($mixaTest->cosineSimilarityByNumericalIndex(0, 1)); die();
 
 //
 $pivoted = $ratings->pivot(index: 'userId', column: 'movieId', value: 'rating');
+
+var_dump($pivoted->head(5)->cosineSimilarityOfFullMatrix()); die();
+
+var_dump($mixaTest->cosineSimilarityOfFullMatrix());
+
+var_dump($pivoted->cosineSimilarityOfFullMatrix());
 
 //var_dump($pivoted->range(0, 10)); die();
 
