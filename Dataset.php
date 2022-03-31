@@ -18,6 +18,8 @@ class Dataset implements ArrayAccess, Countable
 
     private ?string $idColumn;
 
+    private ?int $idColumnIndex;
+
     public function __construct($data, $idColumn = null)
     {
         $columns = $data[0];
@@ -33,6 +35,7 @@ class Dataset implements ArrayAccess, Countable
 
             if ($idColumn && $column == $idColumn) {
                 $idColumnFound = true;
+
             }
 
             $i++;
@@ -42,7 +45,13 @@ class Dataset implements ArrayAccess, Countable
             throw new \InvalidArgumentException("ID Column '$idColumn' not found in column list!");
         }
 
-        $this->idColumn = $idColumn;
+        if ($idColumn) {
+            $this->idColumn = $idColumn;
+
+            $this->idColumnIndex = $this->columns[$idColumn];
+
+            unset($this->columns[$idColumn]);
+        }
 
         // Remove first row which is usually column names
         unset($data[0]);
@@ -50,7 +59,7 @@ class Dataset implements ArrayAccess, Countable
         if (!$idColumn) {
             $this->data = array_values($data);
         } else {
-            $idColumnIndex = $this->columns[$idColumn];
+            $idColumnIndex = $this->idColumnIndex;
 
             $this->data = [];
 
@@ -220,17 +229,19 @@ class Dataset implements ArrayAccess, Countable
         $vectorASum = 0;
         $vectorBSum = 0;
 
-        for ($i = 0; $i < count($vectorA); $i++) {
-            if (!is_numeric($vectorA[$i]) || !is_numeric($vectorB[$i])) {
+        $columns = $this->columns;
+
+        foreach ($columns as $column) {
+            if (!is_numeric($vectorA[$column]) || !is_numeric($vectorB[$column])) {
                 // Skip non-numerical columns. Ideally to be replaced with EXPLICIT way of saying
                 // which columns are numeric!
 
                 continue;
             }
 
-            $product += $vectorA[$i] * $vectorB[$i];
-            $vectorASum += pow($vectorA[$i], 2);
-            $vectorBSum += pow($vectorB[$i], 2);
+            $product += $vectorA[$column] * $vectorB[$column];
+            $vectorASum += pow($vectorA[$column], 2);
+            $vectorBSum += pow($vectorB[$column], 2);
         }
 
         $out = $product / (sqrt($vectorASum) * sqrt($vectorBSum));
@@ -271,32 +282,6 @@ class Dataset implements ArrayAccess, Countable
 
             $out[] = $similarities;
         }
-
-//        for ($i = 0; $i < $numEntries; $i++) {
-//            $similarities = [];
-//
-//            if ($i % 1000 === 0) {
-//                echo "\tProcessing row #$i / $numEntries" . PHP_EOL;
-//            }
-//
-//            for ($j = 0; $j < $numEntries; $j++) {
-//                $similarities[] = $this->cosineSimilarityByNumericalIndex($i, $j);
-//            }
-//
-//            $out[] = $similarities;
-//        }
-
-//        // Make array entry for each row
-//
-//        foreach ($this->data as $indexA => $rowA) {
-//
-//
-//            foreach ($this->data as $indexB => $rowB) {
-//
-//            }
-//
-//            $out[] = $similarities;
-//        }
 
         return $out;
     }

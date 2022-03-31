@@ -26,7 +26,16 @@ $iris = array_map('str_getcsv', file('./Iris.csv'));
 
 $iris = (new Dataset($iris, "Id"));
 
-//$knn = new KNN($iris);die();
+$knn = new KNN($iris);
+
+$nns = $knn->kNearestNeighbors(51, 5);
+
+var_dump($iris[51]);
+
+foreach ($nns as $index) {
+    var_dump($iris[$index][5]);
+}
+die();
 
 $similarities = $iris->cosineSimilarityOfFullMatrix();die();
 
